@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Studio Web Pro - Editor de Audio Online</title>
+<meta name="description" content="Edita tu mÃºsica online: cambia el tono, agrega bajos, reverberaciÃ³n, ecualizador y descarga en MP3, WAV u OGG.">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<style>
+*{font-family:'Urbanist',sans-serif}
+body{background:#fdf9fb;color:#0f172a;line-height:1.6;margin:0;padding:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:rgba(15,23,42,.07);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#bd3193;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer;transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#bd3193;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer}
+.drop-zone{border:2px dashed rgba(15,23,42,.07);transition:all .25s}
+.drop-zone:hover,.drop-zone.drag{border-color:#bd3193;background:rgba(189,49,147,.14)}
+.btn-primary{background:#bd3193;color:#fff;font-weight:600;padding:10px 20px;border-radius:10px;transition:all .2s;border:none;cursor:pointer}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(189,49,147,.3)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:#fff;color:#0f172a;font-weight:500;padding:10px 18px;border-radius:10px;border:1px solid rgba(15,23,42,.07);cursor:pointer;transition:all .2s}
+.btn-secondary:hover{border-color:#bd3193;color:#bd3193}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed}
+.btn-download{background:linear-gradient(135deg,#0891b2,#bd3193);color:#fff;font-weight:600;padding:10px 16px;border-radius:10px;transition:all .2s;border:none;cursor:pointer;display:flex;align-items:center;gap:8px}
+.btn-download:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(8,145,178,.3)}
+.btn-download:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.format-select{background:#fff;color:#0f172a;border:1px solid rgba(15,23,42,.07);border-radius:10px;padding:10px 14px;font-weight:500;cursor:pointer;outline:none;font-family:inherit}
+.format-select:focus{border-color:#bd3193}
+.control-card{background:#fff;border:1px solid rgba(15,23,42,.07);border-radius:16px;padding:20px;transition:all .25s}
+.control-card:hover{border-color:rgba(189,49,147,.4)}
+.value-display{font-variant-numeric:tabular-nums;font-weight:700;color:#bd3193;font-size:1.1rem}
+canvas{display:block;width:100%;border-radius:12px}
+.glow{box-shadow:0 0 0 1px #bd3193,0 0 30px rgba(189,49,147,.14)}
+.preset-btn{padding:8px 14px;border-radius:20px;border:1px solid rgba(15,23,42,.07);background:#fff;color:#0f172a;font-size:.85rem;cursor:pointer;transition:all .2s;font-weight:500;font-family:inherit}
+.preset-btn:hover{border-color:#bd3193;color:#bd3193}
+.preset-btn.active{background:rgba(189,49,147,.14);border-color:#bd3193;color:#bd3193}
+.tab-btn{padding:8px 16px;border-radius:8px 8px 0 0;border:none;background:transparent;color:#64748b;cursor:pointer;font-weight:500;transition:all .2s;border-bottom:2px solid transparent;font-family:inherit;font-size:.95rem}
+.tab-btn.active{color:#bd3193;border-bottom-color:#bd3193;background:rgba(189,49,147,.14)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.progress-ring{transform:rotate(-90deg)}
+.progress-ring-circle{transition:stroke-dashoffset 0.15s ease}
+.stage-dot{width:8px;height:8px;border-radius:50%;background:rgba(15,23,42,.07);display:inline-block;margin-right:6px;transition:all .3s}
+.stage-dot.active{background:#bd3193;box-shadow:0 0 8px #bd3193}
+.stage-dot.done{background:#0891b2}
+</style>
+</head>
+<body>
+<div style="background:radial-gradient(1000px 500px at 10% -10%,rgba(189,49,147,.14),transparent 60%),radial-gradient(800px 400px at 90% 0%,rgba(8,145,178,.14),transparent 60%),#fdf9fb;min-height:100vh;padding:32px 20px;box-sizing:border-box">
+  <div style="max-width:1000px;margin:0 auto">
+    
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:#64748b;margin-bottom:10px">Audio Studio Web Pro</div>
+      <h1 style="font-size:2.5rem;font-weight:700;margin:0 0 12px;line-height:1.15">
+        <span style="background:linear-gradient(100deg,#bd3193,#0891b2);-webkit-background-clip:text;background-clip:text;color:transparent">Estudio de Audio Completo</span>
+      </h1>
+      <p style="color:#64748b;margin:0;font-size:1.05rem">Edita, mejora y descarga tu mÃºsica en MP3, WAV u OGG â€” 100% en tu navegador</p>
+    </div>
+
+    <div id="dropZone" class="drop-zone" style="border-radius:16px;padding:36px 24px;text-align:center;margin-bottom:24px;cursor:pointer;background:#fff">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="1.8" style="margin:0 auto 12px">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <div style="font-weight:600;font-size:1.1rem;margin-bottom:6px">Arrastra tu archivo de audio aquÃ­</div>
+      <div style="color:#64748b;font-size:.9rem">o haz clic para seleccionar (MP3, WAV, OGG, FLAC, M4A)</div>
+      <input type="file" id="fileInput" accept="audio/*" style="display:none">
+    </div>
+
+    <div id="playerSection" style="display:none;margin-bottom:24px">
+      
+      <div class="control-card glow" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="flex:1;min-width:200px">
+            <div id="fileName" style="font-weight:600;font-size:1.05rem;margin-bottom:4px"></div>
+            <div id="fileDuration" style="color:#64748b;font-size:.85rem"></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button id="playBtn" class="btn-primary" disabled><span id="playIcon">â–¶ Reproducir</span></button>
+            <button id="stopBtn" class="btn-secondary" disabled>â–  Detener</button>
+            <select id="formatSelect" class="format-select">
+              <option value="wav">WAV (Calidad mÃ¡xima Â· rÃ¡pido)</option>
+              <option value="mp3">MP3 (320 kbps)</option>
+              <option value="ogg">OGG Vorbis</option>
+            </select>
+            <button id="downloadBtn" class="btn-download" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span id="downloadIcon">Descargar</span>
+            </button>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:4px">
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#64748b;margin-bottom:6px">
+            <span id="currentTime">0:00</span><span id="totalTime">0:00</span>
+          </div>
+          <input type="range" id="progressBar" min="0" max="100" value="0" style="height:4px">
+        </div>
+        
+        <div id="renderProgress" style="display:none;margin-top:14px;padding:16px;background:rgba(189,49,147,.14);border-radius:10px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <svg class="progress-ring" width="44" height="44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(189,49,147,.15)" stroke-width="3"/>
+              <circle id="renderCircle" class="progress-ring-circle" cx="22" cy="22" r="18" fill="none" stroke="#bd3193" stroke-width="3" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="113.1"/>
+            </svg>
+            <div style="flex:1">
+              <div id="renderStatus" style="font-weight:600;font-size:.95rem;margin-bottom:6px">Preparando...</div>
+              <div id="renderPercent" style="color:#64748b;font-size:.85rem;margin-bottom:8px">0%</div>
+              <div id="renderStages" style="font-size:.78rem;color:#64748b;display:flex;gap:16px;flex-wrap:wrap">
+                <span><span id="stage1" class="stage-dot"></span>Procesando audio</span>
+                <span><span id="stage2" class="stage-dot"></span>Aplicando efectos</span>
+                <span><span id="stage3" class="stage-dot"></span>Codificando formato</span>
+                <span><span id="stage4" class="stage-dot"></span>Generando archivo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-card" style="margin-bottom:20px;padding:16px">
+        <canvas id="visualizer" height="140"></canvas>
+      </div>
+
+      <div class="control-card" style="margin-bottom:20px">
+        <div style="font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+          Presets rÃ¡pidos
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="preset-btn" data-preset="flat">Plano</button>
+          <button class="preset-btn" data-preset="rock">Rock</button>
+          <button class="preset-btn" data-preset="pop">Pop</button>
+          <button class="preset-btn" data-preset="jazz">Jazz</button>
+          <button class="preset-btn" data-preset="classical">ClÃ¡sico</button>
+          <button class="preset-btn" data-preset="bass">Bass Boost</button>
+          <button class="preset-btn" data-preset="vocal">Vocal</button>
+          <button class="preset-btn" data-preset="nightcore">Nightcore</button>
+          <button class="preset-btn" data-preset="slowed">Slowed + Reverb</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:4px;margin-bottom:-1px;border-bottom:1px solid rgba(15,23,42,.07);flex-wrap:wrap">
+        <button class="tab-btn active" data-tab="eq">Ecualizador</button>
+        <button class="tab-btn" data-tab="effects">Efectos</button>
+        <button class="tab-btn" data-tab="master">MasterizaciÃ³n</button>
+      </div>
+
+      <div id="tab-eq" class="tab-content active">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2"><path d="M2 12h2l2-7 4 14 3-10 2 5h7"/></svg>
+                <span style="font-weight:600">Bajos</span>
+              </div>
+              <span id="bassValue" class="value-display">0 dB</span>
+            </div>
+            <input type="range" id="bass" min="-12" max="24" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+24 dB</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6"/></svg>
+                <span style="font-weight:600">Medios Bajos</span>
+              </div>
+              <span id="lowMidValue" class="value-display" style="color:#0891b2">0 dB</span>
+            </div>
+            <input type="range" id="lowMid" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12 dB</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6"/></svg>
+                <span style="font-weight:600">Medios</span>
+              </div>
+              <span id="midValue" class="value-display" style="color:#0891b2">0 dB</span>
+            </div>
+            <input type="range" id="mid" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12 dB</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg>
+                <span style="font-weight:600">Medios Altos</span>
+              </div>
+              <span id="highMidValue" class="value-display" style="color:#0891b2">0 dB</span>
+            </div>
+            <input type="range" id="highMid" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12 dB</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+                <span style="font-weight:600">Agudos</span>
+              </div>
+              <span id="trebleValue" class="value-display" style="color:#0891b2">0 dB</span>
+            </div>
+            <input type="range" id="treble" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12 dB</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 2v10l7 7"/></svg>
+                <span style="font-weight:600">Presencia / Aire</span>
+              </div>
+              <span id="presenceValue" class="value-display">0 dB</span>
+            </div>
+            <input type="range" id="presence" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12 dB</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-effects" class="tab-content">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span style="font-weight:600">Tono (Pitch)</span>
+              </div>
+              <span id="pitchValue" class="value-display">0 semitonos</span>
+            </div>
+            <input type="range" id="pitch" min="-12" max="12" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>-12</span><span>0</span><span>+12</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span style="font-weight:600">Velocidad</span>
+              </div>
+              <span id="speedValue" class="value-display">1.00x</span>
+            </div>
+            <input type="range" id="speed" min="0.5" max="2" step="0.05" value="1">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>0.5x</span><span>1x</span><span>2x</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M2 12h2l2-7 4 14 3-10 2 5h7"/><path d="M3 18c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2"/></svg>
+                <span style="font-weight:600">ReverberaciÃ³n</span>
+              </div>
+              <span id="reverbValue" class="value-display" style="color:#0891b2">0%</span>
+            </div>
+            <input type="range" id="reverb" min="0" max="100" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>Seco</span><span>50%</span><span>Ambiente</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                <span style="font-weight:600">PanorÃ¡mica</span>
+              </div>
+              <span id="panValue" class="value-display" style="color:#0891b2">Centro</span>
+            </div>
+            <input type="range" id="pan" min="-100" max="100" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>â† Izq</span><span>C</span><span>Der â†’</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-master" class="tab-content">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bd3193" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                <span style="font-weight:600">Volumen</span>
+              </div>
+              <span id="volumeValue" class="value-display">100%</span>
+            </div>
+            <input type="range" id="volume" min="0" max="150" step="1" value="100">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>0%</span><span>100%</span><span>150%</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg>
+                <span style="font-weight:600">Compresor</span>
+              </div>
+              <span id="compressorValue" class="value-display" style="color:#0891b2">0%</span>
+            </div>
+            <input type="range" id="compressor" min="0" max="100" step="1" value="0">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>Off</span><span>Medio</span><span>Fuerte</span></div>
+          </div>
+          <div class="control-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><circle cx="6" cy="12" r="4"/><circle cx="18" cy="12" r="4"/><path d="M6 8v8M18 8v8M10 12h4"/></svg>
+                <span style="font-weight:600">Ancho EstÃ©reo</span>
+              </div>
+              <span id="stereoValue" class="value-display" style="color:#0891b2">100%</span>
+            </div>
+            <input type="range" id="stereo" min="0" max="200" step="1" value="100">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#64748b;margin-top:6px"><span>Mono</span><span>Normal</span><span>Wide</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:24px">
+        <button id="resetBtn" class="btn-secondary">â†º Restablecer todos los valores</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:40px;color:#64748b;font-size:.85rem;border-top:1px solid rgba(15,23,42,.07);padding-top:20px">
+      <div>Todo el procesamiento ocurre localmente en tu navegador â€” tus archivos no se suben a ningÃºn servidor</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var audioCtx = null, sourceNode = null, gainNode = null;
+  var bassFilter, lowMidFilter, midFilter, highMidFilter, trebleFilter, presenceFilter;
+  var analyser = null, compressor = null, panner = null, reverbNode = null, reverbGain = null, dryGain = null;
+  var audioBuffer = null, originalFileName = 'audio', isPlaying = false;
+  var startTime = 0, pausedAt = 0, playbackRate = 1, pitchOffset = 0, volumeLevel = 1;
+  var animationId = null, isRendering = false;
+  var CIRCUMFERENCE = 113.1;
+
+  var settings = {bass:0,lowMid:0,mid:0,highMid:0,treble:0,presence:0,pitch:0,speed:1,reverb:0,pan:0,volume:100,compressor:0,stereo:100};
+
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('fileInput');
+  var playerSection = document.getElementById('playerSection');
+  var fileName = document.getElementById('fileName');
+  var fileDuration = document.getElementById('fileDuration');
+  var playBtn = document.getElementById('playBtn');
+  var playIcon = document.getElementById('playIcon');
+  var stopBtn = document.getElementById('stopBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var downloadIcon = document.getElementById('downloadIcon');
+  var formatSelect = document.getElementById('formatSelect');
+  var progressBar = document.getElementById('progressBar');
+  var currentTimeEl = document.getElementById('currentTime');
+  var totalTimeEl = document.getElementById('totalTime');
+  var canvas = document.getElementById('visualizer');
+  var ctx = canvas.getContext('2d');
+  var renderProgress = document.getElementById('renderProgress');
+  var renderCircle = document.getElementById('renderCircle');
+  var renderPercent = document.getElementById('renderPercent');
+  var renderStatus = document.getElementById('renderStatus');
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+      document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active')});
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  function setProgress(p){renderCircle.style.strokeDashoffset=CIRCUMFERENCE-(p/100)*CIRCUMFERENCE;renderPercent.textContent=Math.floor(p)+'%'}
+  function setStage(n,s){var d=document.getElementById('stage'+n);d.classList.remove('active','done');if(s)d.classList.add(s)}
+  function clearStages(){for(var i=1;i<=4;i++)setStage(i,null)}
+
+  function initAudioContext(){
+    if(!audioCtx){
+      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      bassFilter=audioCtx.createBiquadFilter();bassFilter.type='lowshelf';bassFilter.frequency.value=200;
+      lowMidFilter=audioCtx.createBiquadFilter();lowMidFilter.type='peaking';lowMidFilter.frequency.value=500;lowMidFilter.Q.value=1;
+      midFilter=audioCtx.createBiquadFilter();midFilter.type='peaking';midFilter.frequency.value=1500;midFilter.Q.value=1;
+      highMidFilter=audioCtx.createBiquadFilter();highMidFilter.type='peaking';highMidFilter.frequency.value=4000;highMidFilter.Q.value=1;
+      trebleFilter=audioCtx.createBiquadFilter();trebleFilter.type='highshelf';trebleFilter.frequency.value=6000;
+      presenceFilter=audioCtx.createBiquadFilter();presenceFilter.type='peaking';presenceFilter.frequency.value=10000;presenceFilter.Q.value=1.5;
+      compressor=audioCtx.createDynamicsCompressor();compressor.threshold.value=-24;compressor.knee.value=30;compressor.ratio.value=1;compressor.attack.value=0.003;compressor.release.value=0.25;
+      panner=audioCtx.createStereoPanner();panner.pan.value=0;
+      reverbGain=audioCtx.createGain();reverbGain.gain.value=0;dryGain=audioCtx.createGain();dryGain.gain.value=1;
+      createReverbImpulse();
+      gainNode=audioCtx.createGain();gainNode.gain.value=1;
+      analyser=audioCtx.createAnalyser();analyser.fftSize=512;
+      bassFilter.connect(lowMidFilter);lowMidFilter.connect(midFilter);midFilter.connect(highMidFilter);highMidFilter.connect(trebleFilter);trebleFilter.connect(presenceFilter);
+      presenceFilter.connect(dryGain);presenceFilter.connect(reverbGain);
+      if(reverbNode){reverbGain.connect(reverbNode);reverbNode.connect(compressor)}
+      dryGain.connect(compressor);compressor.connect(panner);panner.connect(gainNode);gainNode.connect(analyser);analyser.connect(audioCtx.destination);
+    }
+    if(audioCtx.state==='suspended')audioCtx.resume()
+  }
+
+  function createReverbImpulse(){
+    var sr=audioCtx.sampleRate,len=sr*2.5;
+    var impulse=audioCtx.createBuffer(2,len,sr);
+    for(var ch=0;ch<2;ch++){var cd=impulse.getChannelData(ch);for(var i=0;i<len;i++)cd[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.5)}
+    reverbNode=audioCtx.createConvolver();reverbNode.buffer=impulse
+  }
+
+  dropZone.addEventListener('click',function(){fileInput.click()});
+  dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('drag')});
+  dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('drag')});
+  dropZone.addEventListener('drop',function(e){e.preventDefault();dropZone.classList.remove('drag');if(e.dataTransfer.files.length)handleFile(e.dataTransfer.files[0])});
+  fileInput.addEventListener('change',function(e){if(e.target.files.length)handleFile(e.target.files[0])});
+
+  function handleFile(file){
+    if(!file.type.startsWith('audio/')){alert('Archivo no vÃ¡lido');return}
+    initAudioContext();stopPlayback();
+    originalFileName=file.name.replace(/\.[^/.]+$/,'');
+    fileName.textContent=file.name;fileDuration.textContent='Cargando...';
+    playerSection.style.display='block';playBtn.disabled=true;downloadBtn.disabled=true;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      audioCtx.decodeAudioData(e.target.result,function(buffer){
+        audioBuffer=buffer;var dur=formatTime(buffer.duration);
+        fileDuration.textContent='DuraciÃ³n: '+dur+' Â· '+buffer.numberOfChannels+' ch Â· '+(buffer.sampleRate/1000).toFixed(1)+' kHz';
+        totalTimeEl.textContent=dur;playBtn.disabled=false;stopBtn.disabled=false;downloadBtn.disabled=false;
+        progressBar.max=buffer.duration
+      },function(){alert('Error al decodificar');fileDuration.textContent='Error'})
+    };
+    reader.readAsArrayBuffer(file)
+  }
+
+  function formatTime(s){var m=Math.floor(s/60);var sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec}
+
+  playBtn.addEventListener('click',function(){isPlaying?pausePlayback():startPlayback()});
+  stopBtn.addEventListener('click',stopPlayback);
+
+  function startPlayback(){
+    if(!audioBuffer)return;initAudioContext();
+    if(sourceNode)sourceNode.disconnect();
+    sourceNode=audioCtx.createBufferSource();sourceNode.buffer=audioBuffer;
+    var rate=playbackRate*Math.pow(2,pitchOffset/12);sourceNode.playbackRate.value=rate;
+    sourceNode.connect(bassFilter);var offset=pausedAt;
+    startTime=audioCtx.currentTime-(offset/rate);sourceNode.start(0,offset);
+    sourceNode.onended=function(){if(isPlaying)stopPlayback()};
+    isPlaying=true;playIcon.textContent='â¸ Pausar';startVisualizer()
+  }
+
+  function pausePlayback(){
+    if(!isPlaying)return;var rate=playbackRate*Math.pow(2,pitchOffset/12);
+    pausedAt=(audioCtx.currentTime-startTime)*rate;
+    if(sourceNode){sourceNode.onended=null;sourceNode.stop();sourceNode.disconnect()}
+    isPlaying=false;playIcon.textContent='â–¶ Reanudar';cancelAnimationFrame(animationId)
+  }
+
+  function stopPlayback(){
+    if(sourceNode){sourceNode.onended=null;try{sourceNode.stop()}catch(e){}sourceNode.disconnect()}
+    isPlaying=false;pausedAt=0;playIcon.textContent='â–¶ Reproducir';
+    currentTimeEl.textContent='0:00';progressBar.value=0;
+    cancelAnimationFrame(animationId);if(ctx)ctx.clearRect(0,0,canvas.width,canvas.height)
+  }
+
+  function updateProgress(){
+    if(!isPlaying||!audioBuffer)return;var rate=playbackRate*Math.pow(2,pitchOffset/12);
+    var cur=(audioCtx.currentTime-startTime)*rate;if(cur>=audioBuffer.duration){stopPlayback();return}
+    progressBar.value=cur;currentTimeEl.textContent=formatTime(cur)
+  }
+
+  progressBar.addEventListener('input',function(){
+    if(!audioBuffer)return;var was=isPlaying;if(was)pausePlayback();
+    pausedAt=parseFloat(this.value);currentTimeEl.textContent=formatTime(pausedAt);
+    if(was)startPlayback()
+  });
+
+  function setupSlider(id,dispId,suffix,cb,color){
+    var sl=document.getElementById(id),d=document.getElementById(dispId);
+    sl.addEventListener('input',function(){
+      var v=parseFloat(this.value);settings[id]=v;
+      var dv=(suffix==='semitonos'||suffix==='dB')?(v>0?'+':'')+v:v;
+      d.textContent=dv+(suffix?' '+suffix:'');if(color)d.style.color=color;if(cb)cb(v)
+    })
+  }
+
+  setupSlider('bass','bassValue','dB',function(v){if(bassFilter)bassFilter.gain.value=v});
+  setupSlider('lowMid','lowMidValue','dB',function(v){if(lowMidFilter)lowMidFilter.gain.value=v},'#0891b2');
+  setupSlider('mid','midValue','dB',function(v){if(midFilter)midFilter.gain.value=v},'#0891b2');
+  setupSlider('highMid','highMidValue','dB',function(v){if(highMidFilter)highMidFilter.gain.value=v},'#0891b2');
+  setupSlider('treble','trebleValue','dB',function(v){if(trebleFilter)trebleFilter.gain.value=v},'#0891b2');
+  setupSlider('presence','presenceValue','dB',function(v){if(presenceFilter)presenceFilter.gain.value=v});
+  setupSlider('pitch','pitchValue','semitonos',function(v){pitchOffset=v;if(isPlaying)restartPlayback()});
+  setupSlider('speed','speedValue','x',function(v){playbackRate=v;document.getElementById('speedValue').textContent=v.toFixed(2)+'x';if(isPlaying)restartPlayback()});
+  setupSlider('reverb','reverbValue','%',function(v){if(reverbGain)reverbGain.gain.value=v/100*0.8;if(dryGain)dryGain.gain.value=1-(v/100*0.3)},'#0891b2');
+
+  document.getElementById('pan').addEventListener('input',function(){
+    var v=parseInt(this.value);settings.pan=v;var d=document.getElementById('panValue');
+    d.textContent=v===0?'Centro':(v<0?'Izq '+Math.abs(v)+'%':'Der '+v+'%');
+    d.style.color='#0891b2';if(panner)panner.pan.value=v/100
+  });
+
+  setupSlider('volume','volumeValue','%',function(v){volumeLevel=v/100;if(gainNode)gainNode.gain.value=volumeLevel});
+  setupSlider('compressor','compressorValue','%',function(v){
+    if(compressor){compressor.ratio.value=1+(v/100)*11;compressor.threshold.value=-24-(v/100)*12;compressor.knee.value=30-(v/100)*20}
+  },'#0891b2');
+  setupSlider('stereo','stereoValue','%',null,'#0891b2');
+
+  function restartPlayback(){
+    var rate=playbackRate*Math.pow(2,pitchOffset/12);
+    var pos=(audioCtx.currentTime-startTime)*rate;pausedAt=Math.min(pos,audioBuffer.duration-0.1);
+    if(sourceNode){sourceNode.onended=null;try{sourceNode.stop()}catch(e){}sourceNode.disconnect()}
+    sourceNode=audioCtx.createBufferSource();sourceNode.buffer=audioBuffer;
+    sourceNode.playbackRate.value=rate;sourceNode.connect(bassFilter);
+    startTime=audioCtx.currentTime-(pausedAt/rate);sourceNode.start(0,pausedAt);
+    sourceNode.onended=function(){if(isPlaying)stopPlayback()}
+  }
+
+  var presets={
+    flat:{bass:0,lowMid:0,mid:0,highMid:0,treble:0,presence:0,pitch:0,speed:1,reverb:0,pan:0,volume:100,compressor:0,stereo:100},
+    rock:{bass:6,lowMid:2,mid:-2,highMid:2,treble:4,presence:2,pitch:0,speed:1,reverb:15,pan:0,volume:100,compressor:40,stereo:120},
+    pop:{bass:4,lowMid:0,mid:2,highMid:4,treble:3,presence:3,pitch:0,speed:1,reverb:20,pan:0,volume:100,compressor:50,stereo:130},
+    jazz:{bass:2,lowMid:3,mid:4,highMid:2,treble:2,presence:1,pitch:0,speed:1,reverb:30,pan:0,volume:100,compressor:20,stereo:110},
+    classical:{bass:0,lowMid:0,mid:0,highMid:0,treble:2,presence:2,pitch:0,speed:1,reverb:35,pan:0,volume:100,compressor:10,stereo:140},
+    bass:{bass:18,lowMid:4,mid:-4,highMid:-2,treble:0,presence:0,pitch:0,speed:1,reverb:10,pan:0,volume:100,compressor:60,stereo:100},
+    vocal:{bass:-2,lowMid:-2,mid:6,highMid:4,treble:3,presence:4,pitch:0,speed:1,reverb:25,pan:0,volume:100,compressor:55,stereo:110},
+    nightcore:{bass:4,lowMid:0,mid:0,highMid:2,treble:3,presence:2,pitch:6,speed:1.25,reverb:15,pan:0,volume:100,compressor:45,stereo:120},
+    slowed:{bass:8,lowMid:2,mid:0,highMid:-1,treble:-1,presence:0,pitch:-3,speed:0.85,reverb:45,pan:0,volume:100,compressor:30,stereo:130}
+  };
+
+  document.querySelectorAll('.preset-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.preset-btn').forEach(function(x){x.classList.remove('active')});
+      b.classList.add('active');applyPreset(presets[b.dataset.preset])
+    })
+  });
+
+  function applyPreset(p){
+    for(var k in p){var sl=document.getElementById(k);if(sl){sl.value=p[k];sl.dispatchEvent(new Event('input'))}}
+  }
+
+  document.getElementById('resetBtn').addEventListener('click',function(){
+    applyPreset(presets.flat);
+    document.querySelectorAll('.preset-btn').forEach(function(b){b.classList.remove('active')})
+  });
+
+  function resizeCanvas(){var r=canvas.getBoundingClientRect();canvas.width=r.width*window.devicePixelRatio;canvas.height=140*window.devicePixelRatio;ctx.scale(window.devicePixelRatio,window.devicePixelRatio)}
+  resizeCanvas();window.addEventListener('resize',resizeCanvas);
+
+  function startVisualizer(){
+    function draw(){
+      animationId=requestAnimationFrame(draw);updateProgress();
+      var bl=analyser.frequencyBinCount;var da=new Uint8Array(bl);analyser.getByteFrequencyData(da);
+      var w=canvas.width/window.devicePixelRatio,h=canvas.height/window.devicePixelRatio;
+      ctx.clearRect(0,0,w,h);var bw=(w/bl)*2,bh,x=0;
+      for(var i=0;i<bl;i++){
+        bh=da[i]/255*h*0.95;var g=ctx.createLinearGradient(0,h-bh,0,h);
+        g.addColorStop(0,'#bd3193');g.addColorStop(0.5,'#a855f7');g.addColorStop(1,'#0891b2');
+        ctx.fillStyle=g;var rad=Math.min(bw/2,4);
+        ctx.beginPath();ctx.moveTo(x+rad,h-bh);ctx.lineTo(x+bw-rad,h-bh);
+        ctx.quadraticCurveTo(x+bw,h-bh,x+bw,h-bh+rad);
+        ctx.lineTo(x+bw,h);ctx.lineTo(x,h);ctx.lineTo(x,h-bh+rad);
+        ctx.quadraticCurveTo(x,h-bh,x+rad,h-bh);ctx.closePath();ctx.fill();x+=bw
+      }
+    }
+    draw()
+  }
+
+  downloadBtn.addEventListener('click',function(){if(!audioBuffer||isRendering)return;renderAndDownload(formatSelect.value)});
+
+  async function renderAndDownload(format){
+    isRendering=true;downloadBtn.disabled=true;playBtn.disabled=true;
+    downloadIcon.textContent='Procesando...';renderProgress.style.display='block';
+    clearStages();setProgress(0);
+    try{
+      setStage(1,'active');renderStatus.textContent='Inicializando motor de audio...';
+      await sleep(100);setProgress(5);
+      var sampleRate=audioBuffer.sampleRate;
+      var effectiveRate=playbackRate*Math.pow(2,pitchOffset/12);
+      var renderDuration=audioBuffer.duration/effectiveRate;
+      var numChannels=audioBuffer.numberOfChannels;
+      setStage(1,'done');
+
+      setStage(2,'active');renderStatus.textContent='Procesando efectos de audio...';setProgress(10);
+      var offlineCtx=new(window.OfflineAudioContext||window.webkitOfflineAudioContext)(numChannels,Math.ceil(renderDuration*sampleRate),sampleRate);
+      var src=offlineCtx.createBufferSource();src.buffer=audioBuffer;src.playbackRate.value=effectiveRate;
+      var b=offlineCtx.createBiquadFilter();b.type='lowshelf';b.frequency.value=200;b.gain.value=settings.bass;
+      var lm=offlineCtx.createBiquadFilter();lm.type='peaking';lm.frequency.value=500;lm.Q.value=1;lm.gain.value=settings.lowMid;
+      var m=offlineCtx.createBiquadFilter();m.type='peaking';m.frequency.value=1500;m.Q.value=1;m.gain.value=settings.mid;
+      var hm=offlineCtx.createBiquadFilter();hm.type='peaking';hm.frequency.value=4000;hm.Q.value=1;hm.gain.value=settings.highMid;
+      var t=offlineCtx.createBiquadFilter();t.type='highshelf';t.frequency.value=6000;t.gain.value=settings.treble;
+      var pr=offlineCtx.createBiquadFilter();pr.type='peaking';pr.frequency.value=10000;pr.Q.value=1.5;pr.gain.value=settings.presence;
+      var comp=offlineCtx.createDynamicsCompressor();comp.threshold.value=-24-(settings.compressor/100)*12;comp.knee.value=30-(settings.compressor/100)*20;comp.ratio.value=1+(settings.compressor/100)*11;comp.attack.value=0.003;comp.release.value=0.25;
+      var pan=offlineCtx.createStereoPanner();pan.pan.value=settings.pan/100;
+      var dry=offlineCtx.createGain();dry.gain.value=1-(settings.reverb/100*0.3);
+      var wet=offlineCtx.createGain();wet.gain.value=settings.reverb/100*0.8;
+      var revLen=sampleRate*2.5;var revImp=offlineCtx.createBuffer(2,revLen,sampleRate);
+      for(var ch=0;ch<2;ch++){var cd=revImp.getChannelData(ch);for(var i=0;i<revLen;i++)cd[i]=(Math.random()*2-1)*Math.pow(1-i/revLen,2.5)}
+      var conv=offlineCtx.createConvolver();conv.buffer=revImp;
+      var g=offlineCtx.createGain();g.gain.value=settings.volume/100;
+      src.connect(b);b.connect(lm);lm.connect(m);m.connect(hm);hm.connect(t);t.connect(pr);
+      pr.connect(dry);pr.connect(wet);wet.connect(conv);conv.connect(comp);dry.connect(comp);
+      comp.connect(pan);pan.connect(g);g.connect(offlineCtx.destination);src.start(0);
+      var renderStart=Date.now();var estTime=renderDuration*300;
+      var progInterval=setInterval(function(){var elapsed=Date.now()-renderStart;var pct=Math.min(10+(elapsed/estTime)*45,55);setProgress(pct)},100);
+      var renderedBuffer=await offlineCtx.startRendering();clearInterval(progInterval);
+      setStage(2,'done');setProgress(58);
+
+      setStage(3,'active');var blob,ext;
+      if(format==='wav'){
+        renderStatus.textContent='Generando archivo WAV...';setProgress(70);await sleep(50);
+        blob=audioBufferToWav(renderedBuffer);ext='wav';setProgress(92)
+      }else if(format==='mp3'){
+        renderStatus.textContent='Codificando MP3 (320 kbps)...';setProgress(62);
+        blob=await encodeMP3Async(renderedBuffer,function(pct){setProgress(62+pct*0.30)});ext='mp3'
+      }else{
+        renderStatus.textContent='Codificando OGG...';setProgress(70);
+        try{blob=await encodeWithMediaRecorder(renderedBuffer,'audio/ogg;codecs=vorbis');ext='ogg'}
+        catch(e){renderStatus.textContent='OGG no soportado, usando WAV...';await sleep(300);blob=audioBufferToWav(renderedBuffer);ext='wav'}
+        setProgress(92)
+      }
+      setStage(3,'done');
+
+      setStage(4,'active');renderStatus.textContent='Descargando archivo...';setProgress(96);await sleep(100);
+      downloadBlob(blob,ext);setProgress(100);setStage(4,'done');
+      renderStatus.textContent='Â¡Listo! Archivo descargado';
+      setTimeout(function(){
+        renderProgress.style.display='none';renderCircle.style.strokeDashoffset=CIRCUMFERENCE;
+        isRendering=false;downloadBtn.disabled=false;playBtn.disabled=false;downloadIcon.textContent='Descargar'
+      },1000)
+    }catch(err){
+      alert('Error: '+err.message);renderProgress.style.display='none';
+      isRendering=false;downloadBtn.disabled=false;playBtn.disabled=false;downloadIcon.textContent='Descargar'
+    }
+  }
+
+  function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+
+  function downloadBlob(blob,ext){
+    var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;var sfx='';
+    if(settings.pitch!==0)sfx+='_pitch'+(settings.pitch>0?'+':'')+settings.pitch;
+    if(settings.bass!==0)sfx+='_bass'+(settings.bass>0?'+':'')+settings.bass;
+    if(settings.speed!==1)sfx+='_speed'+settings.speed.toFixed(2).replace('.','');
+    if(settings.reverb>0)sfx+='_reverb'+settings.reverb;
+    a.download=originalFileName+sfx+'_modificado.'+ext;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)
+  }
+
+  function audioBufferToWav(buffer){
+    var nc=buffer.numberOfChannels,sr=buffer.sampleRate,samples=buffer.length,ds=samples*nc*2;
+    var ab=new ArrayBuffer(44+ds);var v=new DataView(ab);
+    ws(v,0,'RIFF');v.setUint32(4,36+ds,true);ws(v,8,'WAVE');
+    ws(v,12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);
+    v.setUint16(22,nc,true);v.setUint32(24,sr,true);
+    v.setUint32(28,sr*nc*2,true);v.setUint16(32,nc*2,true);
+    v.setUint16(34,16,true);ws(v,36,'data');v.setUint32(40,ds,true);
+    var chs=[];for(var c=0;c<nc;c++)chs.push(buffer.getChannelData(c));
+    var off=44;
+    for(var i=0;i<samples;i++){for(var c=0;c<nc;c++){var s=Math.max(-1,Math.min(1,chs[c][i]));v.setInt16(off,s<0?s*0x8000:s*0x7FFF,true);off+=2}}
+    return new Blob([ab],{type:'audio/wav'})
+  }
+
+  function ws(v,o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+
+  function encodeMP3Async(buffer,progressCb){
+    return new Promise(function(resolve,reject){
+      if(typeof lamejs==='undefined'){resolve(audioBufferToWav(buffer));return}
+      var nc=buffer.numberOfChannels,sr=buffer.sampleRate,kbps=320;
+      var enc=new lamejs.Mp3Encoder(nc,sr,kbps);var mp3Data=[];
+      var left=buffer.getChannelData(0);var right=nc>1?buffer.getChannelData(1):null;
+      var total=left.length;var chunkSize=1152*20;var pos=0;
+      function processChunk(){
+        var end=Math.min(pos+chunkSize,total);
+        var l16=new Int16Array(end-pos);var r16=right?new Int16Array(end-pos):null;
+        for(var i=pos,j=0;i<end;i++,j++){l16[j]=Math.max(-32767,Math.min(32767,left[i]*32767));if(r16)r16[j]=Math.max(-32767,Math.min(32767,right[i]*32767))}
+        for(var i=0;i<l16.length;i+=1152){var lc=l16.subarray(i,i+1152);var rc=r16?r16.subarray(i,i+1152):null;var buf=rc?enc.encodeBuffer(lc,rc):enc.encodeBuffer(lc);if(buf.length>0)mp3Data.push(buf)}
+        pos=end;if(progressCb)progressCb(pos/total);
+        if(pos<total){setTimeout(processChunk,0)}
+        else{var endBuf=enc.flush();if(endBuf.length>0)mp3Data.push(endBuf);resolve(new Blob(mp3Data,{type:'audio/mpeg'}))}
+      }
+      setTimeout(processChunk,0)
+    })
+  }
+
+  function encodeWithMediaRecorder(buffer,mimeType){
+    return new Promise(function(resolve,reject){
+      if(!MediaRecorder||!MediaRecorder.isTypeSupported(mimeType)){reject(new Error('Formato no soportado'));return}
+      var destCtx=new(window.AudioContext||window.webkitAudioContext)();
+      var dest=destCtx.createMediaStreamDestination();
+      var src=destCtx.createBufferSource();src.buffer=buffer;src.connect(dest);
+      var chunks=[];var rec=new MediaRecorder(dest.stream,{mimeType:mimeType,audioBitsPerSecond:256000});
+      rec.ondataavailable=function(e){if(e.data.size>0)chunks.push(e.data)};
+      rec.onstop=function(){var blob=new Blob(chunks,{type:mimeType});destCtx.close();resolve(blob)};
+      rec.onerror=function(e){destCtx.close();reject(e.error)};
+      rec.start();src.start(0);src.onended=function(){rec.stop()}
+    })
+  }
+
+  ctx.fillStyle='rgba(15,23,42,0.05)';
+  ctx.fillRect(0,65,canvas.width/window.devicePixelRatio,10);
+})();
+</script>
+</body>
+</html>
